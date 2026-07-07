@@ -21,7 +21,7 @@ FairShare/
 ## Progress
 - ✅ **Slice 0 — Foundation:** Material 3 theme (light + dark), GoRouter shell, Riverpod.
 - ✅ **Slice 1 — Auth:** Firebase email/password + Google sign-in, route guard.
-- ⏭️ **Slice 2 — Groups:** create/list groups; backend enters.
+- ✅ **Slice 2 — Groups:** create/list groups; backend enters.
 
 ## Running (web, during development)
 ```bash
