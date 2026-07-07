@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environment (managed by uv; never commit)
+.venv/
+
+# Environment / secrets
+.env
+.env.*
+
+# Firebase Admin service account key (a REAL secret — never commit)
+*firebase-adminsdk*.json
+serviceAccount*.json
