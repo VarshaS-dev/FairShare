@@ -35,6 +35,10 @@ class AuthRepository {
     );
     await cred.user?.updateDisplayName(name.trim());
     await cred.user?.reload(); // push the new name into `userChanges`
+    // Mint a FRESH ID token so it carries the `name` claim. The token issued at
+    // account creation predates updateDisplayName, so without this the backend
+    // would provision the user with a null display name.
+    await cred.user?.getIdToken(true);
   }
 
   /// Web uses Firebase's popup flow. Android will use a native flow once its

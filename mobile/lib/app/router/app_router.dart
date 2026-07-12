@@ -10,6 +10,8 @@ import '../../features/auth/presentation/sign_in_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
 import '../../features/groups/presentation/groups_screen.dart';
 import '../../features/groups/presentation/create_group_screen.dart';
+import '../../features/groups/presentation/group_detail_screen.dart';
+import '../../features/groups/presentation/join_group_screen.dart';
 import '../../features/activity/presentation/activity_screen.dart';
 import '../../features/profile/presentation/account_screen.dart';
 
@@ -57,6 +59,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/sign-up', builder: (c, s) => const SignUpScreen()),
       GoRoute(
           path: '/create-group', builder: (c, s) => const CreateGroupScreen()),
+      GoRoute(
+        path: '/group/:id',
+        builder: (c, s) => GroupDetailScreen(groupId: s.pathParameters['id']!),
+      ),
+      GoRoute(path: '/join', builder: (c, s) => const JoinGroupScreen()),
     ],
   );
 });

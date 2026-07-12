@@ -5,6 +5,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.member import MemberRead
+
 
 class GroupCreate(BaseModel):
     """Request body for creating a group."""
@@ -14,7 +16,7 @@ class GroupCreate(BaseModel):
 
 
 class GroupRead(BaseModel):
-    """Group as returned by the API."""
+    """Group as returned by list/create endpoints (no members)."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -22,3 +24,13 @@ class GroupRead(BaseModel):
     name: str
     currency: str
     created_at: datetime
+
+
+class GroupDetailRead(BaseModel):
+    """A single group plus its members (GET /groups/{id})."""
+
+    id: uuid.UUID
+    name: str
+    currency: str
+    created_at: datetime
+    members: list[MemberRead]

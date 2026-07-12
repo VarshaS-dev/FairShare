@@ -17,7 +17,16 @@ class GroupsScreen extends ConsumerWidget {
     final groupsAsync = ref.watch(groupsListProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Groups')),
+      appBar: AppBar(
+        title: const Text('Groups'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.input_rounded),
+            tooltip: 'Join a group',
+            onPressed: () => context.push('/join'),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/create-group'),
         icon: const Icon(Icons.add_rounded),
@@ -66,7 +75,7 @@ class _GroupCard extends StatelessWidget {
         title: Text(group.name),
         subtitle: Text(group.currency),
         trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () {}, // group detail arrives in a later slice
+        onTap: () => context.push('/group/${group.id}'),
       ),
     );
   }

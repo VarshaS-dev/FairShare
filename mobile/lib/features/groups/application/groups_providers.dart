@@ -11,3 +11,10 @@ import '../data/groups_repository.dart';
 final groupsListProvider = FutureProvider<List<Group>>((ref) async {
   return ref.watch(groupsRepositoryProvider).listGroups();
 });
+
+/// Loads one group's detail (incl. members). `.family` parameterizes the
+/// provider by group id, so each group gets its own cached async state.
+final groupDetailProvider =
+    FutureProvider.family<GroupDetail, String>((ref, id) async {
+  return ref.watch(groupsRepositoryProvider).getGroup(id);
+});

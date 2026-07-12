@@ -37,6 +37,7 @@ def get_current_user(
 
     firebase_uid: str = claims["uid"]
     user = db.scalar(select(User).where(User.firebase_uid == firebase_uid))
+
     if user is None:
         user = User(
             firebase_uid=firebase_uid,
@@ -46,4 +47,29 @@ def get_current_user(
         db.add(user)
         db.commit()
         db.refresh(user)
+        return user
+
+    # Keep our local mirror in sync with Firebase.
+    #
+    # Why this matters: an ID token is a SNAPSHOT of the user's claims at the
+    # moment it was minted. The token from createUserWithEmailAndPassword
+    # predates updateDisplayName, so a brand-new signup's first request carries
+    # no `name` claim — and we'd store display_name = NULL forever. Re-syncing
+    # on each request self-heals that, and also picks up later name/email edits.
+    #
+    # We only overwrite when the token actually HAS a value, so a token missing
+    # a claim can never blank out good data.
+    token_email = claims.get("email")
+    token_name = claims.get("name")
+    changed = False
+    if token_email and user.email != token_email:
+        user.email = token_email
+        changed = True
+    if token_name and user.display_name != token_name:
+        user.display_name = token_name
+        changed = True
+    if changed:
+        db.commit()
+        db.refresh(user)
+
     return user
