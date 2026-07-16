@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.models.expense import Expense, ExpenseSplit
 from app.models.group import Group
 from app.models.invite import Invite
 from app.models.member import Member
@@ -17,6 +18,7 @@ from app.models.user import User
 from app.schemas.group import GroupCreate, GroupDetailRead, GroupRead
 from app.schemas.invite import InviteCreate, InviteRead
 from app.schemas.member import MemberCreate, MemberRead
+from app.services.activity import actor_name, record_activity
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -54,6 +56,13 @@ def create_group(
             name=current_user.display_name or "Me",
             role="creator",
         )
+    )
+    record_activity(
+        db,
+        group_id=group.id,
+        actor_id=current_user.id,
+        type_="group_created",
+        summary=f"{actor_name(current_user)} created the group",
     )
     db.commit()
     db.refresh(group)
@@ -165,6 +174,13 @@ def add_member(
         )
 
     db.add(member)
+    record_activity(
+        db,
+        group_id=group_id,
+        actor_id=current_user.id,
+        type_="member_added",
+        summary=f"{actor_name(current_user)} added {member.name}",
+    )
     db.commit()
     db.refresh(member)
     return member
@@ -195,6 +211,18 @@ def remove_member(
     if member.role == "creator":
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "The group creator can't be removed."
+        )
+
+    # Can't remove someone tied to expenses — it would orphan the ledger.
+    in_expense = db.scalar(
+        select(Expense.id).where(Expense.paid_by == member_id).limit(1)
+    ) or db.scalar(
+        select(ExpenseSplit.id).where(ExpenseSplit.member_id == member_id).limit(1)
+    )
+    if in_expense is not None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Can't remove someone who's part of an expense.",
         )
 
     db.delete(member)

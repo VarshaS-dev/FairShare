@@ -14,6 +14,7 @@ from app.models.member import Member
 from app.models.user import User
 from app.schemas.group import GroupRead
 from app.schemas.invite import InvitePreview
+from app.services.activity import actor_name, record_activity
 
 router = APIRouter(prefix="/invites", tags=["invites"])
 
@@ -104,6 +105,13 @@ def accept_invite(
 
     invite.accepted_at = datetime.now(timezone.utc)
     invite.accepted_by = current_user.id
+    record_activity(
+        db,
+        group_id=invite.group_id,
+        actor_id=current_user.id,
+        type_="member_joined",
+        summary=f"{actor_name(current_user)} joined",
+    )
     db.commit()
     db.refresh(group)
     return group

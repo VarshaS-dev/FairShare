@@ -12,8 +12,12 @@ import '../../features/groups/presentation/groups_screen.dart';
 import '../../features/groups/presentation/create_group_screen.dart';
 import '../../features/groups/presentation/group_detail_screen.dart';
 import '../../features/groups/presentation/join_group_screen.dart';
+import '../../features/expenses/presentation/add_expense_screen.dart';
+import '../../features/expenses/presentation/expense_detail_screen.dart';
+import '../../features/expenses/data/expense_dto.dart';
 import '../../features/activity/presentation/activity_screen.dart';
 import '../../features/profile/presentation/account_screen.dart';
+import '../../features/settlements/presentation/settlements_history_screen.dart';
 
 /// The router is a provider so it can react to auth state.
 ///
@@ -64,6 +68,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (c, s) => GroupDetailScreen(groupId: s.pathParameters['id']!),
       ),
       GoRoute(path: '/join', builder: (c, s) => const JoinGroupScreen()),
+      GoRoute(
+        path: '/group/:id/add-expense',
+        builder: (c, s) => AddExpenseScreen(groupId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/group/:id/edit-expense',
+        builder: (c, s) => AddExpenseScreen(
+          groupId: s.pathParameters['id']!,
+          expense: s.extra as Expense?,
+        ),
+      ),
+      GoRoute(
+        path: '/group/:id/expense/:eid',
+        builder: (c, s) => ExpenseDetailScreen(
+          groupId: s.pathParameters['id']!,
+          expenseId: s.pathParameters['eid']!,
+        ),
+      ),
+      GoRoute(
+        path: '/group/:id/payments',
+        builder: (c, s) =>
+            SettlementsHistoryScreen(groupId: s.pathParameters['id']!),
+      ),
     ],
   );
 });

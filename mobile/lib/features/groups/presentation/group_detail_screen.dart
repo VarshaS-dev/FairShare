@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/money.dart';
 import '../../../core/network/api_error.dart';
+import '../../balances/presentation/balances_tab.dart';
+import '../../expenses/application/expenses_providers.dart';
+import '../../expenses/data/expense_dto.dart';
 import '../application/groups_providers.dart';
 import '../data/group_dto.dart';
 import '../data/groups_repository.dart';
@@ -31,15 +36,36 @@ Future<void> _createAndShowInvite(
   }
 }
 
-/// Shows one group and its members. Reached by tapping a group card.
-class GroupDetailScreen extends ConsumerWidget {
+/// Group detail: an Expenses tab and a Members tab. The FAB matches the tab.
+class GroupDetailScreen extends ConsumerStatefulWidget {
   const GroupDetailScreen({super.key, required this.groupId});
 
   final String groupId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final groupAsync = ref.watch(groupDetailProvider(groupId));
+  ConsumerState<GroupDetailScreen> createState() => _GroupDetailScreenState();
+}
+
+class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 3, vsync: this)
+      ..addListener(() => setState(() {})); // swap the FAB per tab
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
     return Scaffold(
       appBar: AppBar(
@@ -49,57 +75,197 @@ class GroupDetailScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.link_rounded),
               tooltip: 'Invite to group',
-              onPressed: () => _createAndShowInvite(context, ref, groupId),
+              onPressed: () =>
+                  _createAndShowInvite(context, ref, widget.groupId),
             ),
         ],
-      ),
-      floatingActionButton: groupAsync.asData != null
-          ? FloatingActionButton.extended(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (_) => _AddMemberDialog(groupId: groupId),
-              ),
-              icon: const Icon(Icons.person_add_alt_rounded),
-              label: const Text('Add member'),
-            )
-          : null,
-      body: groupAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.cloud_off_rounded, size: 56),
-                const SizedBox(height: 12),
-                Text(describeApiError(e), textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () => ref.invalidate(groupDetailProvider(groupId)),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        bottom: TabBar(
+          controller: _tab,
+          tabs: const [
+            Tab(text: 'Expenses'),
+            Tab(text: 'Balances'),
+            Tab(text: 'Members'),
+          ],
         ),
-        data: (group) => ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _GroupHeader(group: group),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Text('Members', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(width: 6),
-                Text('(${group.members.length})',
-                    style: Theme.of(context).textTheme.bodyMedium),
-              ],
+      ),
+      floatingActionButton: groupAsync.asData == null
+          ? null
+          : switch (_tab.index) {
+              0 => FloatingActionButton.extended(
+                  onPressed: () =>
+                      context.push('/group/${widget.groupId}/add-expense'),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add expense'),
+                ),
+              2 => FloatingActionButton.extended(
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => _AddMemberDialog(groupId: widget.groupId),
+                  ),
+                  icon: const Icon(Icons.person_add_alt_rounded),
+                  label: const Text('Add member'),
+                ),
+              _ => null,
+            },
+      body: TabBarView(
+        controller: _tab,
+        children: [
+          _ExpensesTab(groupId: widget.groupId),
+          BalancesTab(groupId: widget.groupId),
+          _MembersTab(groupId: widget.groupId),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpensesTab extends ConsumerWidget {
+  const _ExpensesTab({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expensesAsync = ref.watch(expensesProvider(groupId));
+    final currency =
+        ref.watch(groupDetailProvider(groupId)).asData?.value.currency ?? '';
+
+    return expensesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => _ErrorRetry(
+        message: describeApiError(e),
+        onRetry: () => ref.invalidate(expensesProvider(groupId)),
+      ),
+      data: (expenses) => expenses.isEmpty
+          ? const _EmptyExpenses()
+          : RefreshIndicator(
+              onRefresh: () => ref.refresh(expensesProvider(groupId).future),
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                itemCount: expenses.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (_, i) => _ExpenseTile(
+                    groupId: groupId, expense: expenses[i], currency: currency),
+              ),
             ),
+    );
+  }
+}
+
+class _ExpenseTile extends StatelessWidget {
+  const _ExpenseTile({
+    required this.groupId,
+    required this.expense,
+    required this.currency,
+  });
+
+  final String groupId;
+  final Expense expense;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: theme.colorScheme.secondary,
+          child: Icon(Icons.receipt_long_rounded,
+              color: theme.colorScheme.onSecondary),
+        ),
+        title: Text(expense.description),
+        subtitle: Text('Paid by ${expense.paidByName}'),
+        trailing: Text(
+          Money.formatWithCurrency(expense.amountMinor, currency),
+          style: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        onTap: () => context.push('/group/$groupId/expense/${expense.id}'),
+      ),
+    );
+  }
+}
+
+class _EmptyExpenses extends StatelessWidget {
+  const _EmptyExpenses();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.receipt_long_rounded,
+                size: 72, color: theme.colorScheme.primary),
+            const SizedBox(height: 16),
+            Text('No expenses yet', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
-            ...group.members
-                .map((m) => _MemberTile(groupId: groupId, member: m)),
-            const SizedBox(height: 80), // breathing room above the FAB
+            Text('Tap “Add expense” to start splitting.',
+                textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MembersTab extends ConsumerWidget {
+  const _MembersTab({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupAsync = ref.watch(groupDetailProvider(groupId));
+    return groupAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => _ErrorRetry(
+        message: describeApiError(e),
+        onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
+      ),
+      data: (group) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        children: [
+          _GroupHeader(group: group),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Text('Members', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(width: 6),
+              Text('(${group.members.length})',
+                  style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...group.members.map((m) => _MemberTile(groupId: groupId, member: m)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorRetry extends StatelessWidget {
+  const _ErrorRetry({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 56),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),
@@ -176,7 +342,6 @@ class _InviteCodeDialog extends StatelessWidget {
 
 enum _AddMode { name, email }
 
-/// Add someone as a placeholder (name only) or by linking an existing user (email).
 class _AddMemberDialog extends ConsumerStatefulWidget {
   const _AddMemberDialog({required this.groupId});
 
@@ -432,7 +597,6 @@ class _MemberTile extends ConsumerWidget {
                   }
                 },
                 itemBuilder: (_) => [
-                  // Only placeholders (no account) can be "claimed" via invite.
                   if (!member.isUser)
                     const PopupMenuItem(
                       value: 'invite',
