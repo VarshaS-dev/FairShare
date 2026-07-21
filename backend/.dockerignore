@@ -1,0 +1,12 @@
+# Never ship these into the image
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.env
+.env.*
+serviceAccountKey.json
+*firebase-adminsdk*.json
+.git/
+.pytest_cache/
+.ruff_cache/

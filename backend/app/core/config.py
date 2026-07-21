@@ -19,8 +19,16 @@ class Settings(BaseSettings):
     # Firebase project that issues the ID tokens we verify (see Slice 2c).
     firebase_project_id: str = "fairshare-3f1b1"
 
-    # Path to the Firebase Admin service-account JSON (set in .env in Slice 2c).
+    # Path to the Firebase Admin service-account JSON file (local dev).
     google_application_credentials: str | None = None
+
+    # The service-account JSON *content*, for cloud hosts that inject secrets as
+    # env vars rather than files. Takes precedence over the file path if set.
+    firebase_service_account_json: str | None = None
+
+    # Comma-separated allowed CORS origins ("*" = any). Only the browser web
+    # build needs this; native apps ignore CORS. Tighten in production.
+    cors_origins: str = "*"
 
 
 settings = Settings()

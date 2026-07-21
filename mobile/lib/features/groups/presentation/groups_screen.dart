@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/money.dart';
+import '../../overview/application/overview_providers.dart';
+import '../../overview/data/overview_dto.dart';
 import '../application/groups_providers.dart';
 import '../data/group_dto.dart';
 
-/// The Groups tab — now backed by real data from the API.
-///
-/// `groupsListProvider` is an AsyncValue, so `.when(...)` cleanly renders the
-/// three states our user flows demand: loading, error, and data (empty or not).
+const _owedColor = Color(0xFF2E7D32); // green 800 — money owed to you
+
+/// The home screen: a consolidated per-person balance section, then the groups.
 class GroupsScreen extends ConsumerWidget {
   const GroupsScreen({super.key});
 
@@ -18,7 +20,7 @@ class GroupsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Groups'),
+        title: const Text('Home'),
         actions: [
           IconButton(
             icon: const Icon(Icons.input_rounded),
@@ -37,17 +39,64 @@ class GroupsScreen extends ConsumerWidget {
         error: (err, _) => _ErrorState(
           onRetry: () => ref.invalidate(groupsListProvider),
         ),
-        data: (groups) => groups.isEmpty
-            ? const _EmptyState()
-            : RefreshIndicator(
-                onRefresh: () => ref.refresh(groupsListProvider.future),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: groups.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, i) => _GroupCard(group: groups[i]),
-                ),
-              ),
+        data: (groups) {
+          if (groups.isEmpty) return const _EmptyState();
+          final people =
+              ref.watch(overviewProvider).asData?.value.people ?? const [];
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(overviewProvider);
+              ref.invalidate(groupsListProvider);
+              await ref.read(groupsListProvider.future);
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (people.isNotEmpty) ...[
+                  Text('Balances', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  ...people.map((p) => _PersonCard(person: p)),
+                  const SizedBox(height: 24),
+                ],
+                Text('Groups', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                ...groups.map((g) => _GroupCard(group: g)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PersonCard extends StatelessWidget {
+  const _PersonCard({required this.person});
+
+  final OverviewPerson person;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final net = person.netMinor;
+    final owedToMe = net > 0;
+    final text = owedToMe
+        ? 'owes you ${Money.formatWithCurrency(net, person.currency)}'
+        : 'you owe ${Money.formatWithCurrency(-net, person.currency)}';
+    final color = owedToMe ? _owedColor : theme.colorScheme.error;
+    final initial =
+        person.name.trim().isNotEmpty ? person.name.trim()[0].toUpperCase() : '?';
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: theme.colorScheme.primary,
+          child: Text(initial,
+              style: TextStyle(color: theme.colorScheme.onPrimary)),
+        ),
+        title: Text(person.name),
+        subtitle: Text(text, style: TextStyle(color: color)),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => context.push('/person', extra: person),
       ),
     );
   }

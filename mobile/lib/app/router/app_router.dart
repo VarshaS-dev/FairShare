@@ -18,6 +18,8 @@ import '../../features/expenses/data/expense_dto.dart';
 import '../../features/activity/presentation/activity_screen.dart';
 import '../../features/profile/presentation/account_screen.dart';
 import '../../features/settlements/presentation/settlements_history_screen.dart';
+import '../../features/overview/presentation/person_detail_screen.dart';
+import '../../features/overview/data/overview_dto.dart';
 
 /// The router is a provider so it can react to auth state.
 ///
@@ -90,6 +92,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/group/:id/payments',
         builder: (c, s) =>
             SettlementsHistoryScreen(groupId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/person',
+        builder: (c, s) => PersonDetailScreen(person: s.extra as OverviewPerson),
       ),
     ],
   );

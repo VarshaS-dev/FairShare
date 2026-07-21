@@ -5,6 +5,7 @@ import '../../../core/money.dart';
 import '../../../core/network/api_error.dart';
 import '../../activity/application/activity_providers.dart';
 import '../../groups/application/groups_providers.dart';
+import '../../overview/application/overview_providers.dart';
 import '../application/settlements_providers.dart';
 import '../data/settlements_repository.dart';
 
@@ -83,6 +84,7 @@ class _RecordSettlementDialogState
           );
       ref.invalidate(settlementsProvider(widget.groupId));
       ref.invalidate(activityProvider);
+      ref.invalidate(overviewProvider);
       if (!mounted) return;
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('Payment recorded')));

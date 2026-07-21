@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
+from app.core.config import settings
 
 app = FastAPI(
     title="FairShare API",
@@ -15,13 +16,17 @@ app = FastAPI(
     summary="Backend for the FairShare expense-splitting app.",
 )
 
-# CORS: let the Flutter web app (served from a different localhost port) call
-# this API from the browser. Dev-only wildcard — tighten to real origins before
-# production. We authenticate with bearer tokens (not cookies), so credentials
-# stay off, which keeps the wildcard origin safe.
+# CORS: only the browser web build needs this (native apps ignore it). Origins
+# come from settings — "*" in dev, a real allowlist in production. We use bearer
+# tokens (not cookies), so credentials stay off.
+_origins = (
+    ["*"]
+    if settings.cors_origins.strip() == "*"
+    else [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

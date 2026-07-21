@@ -6,6 +6,7 @@ import '../../../core/network/api_error.dart';
 import '../../activity/application/activity_providers.dart';
 import '../../groups/application/groups_providers.dart';
 import '../../groups/data/group_dto.dart';
+import '../../overview/application/overview_providers.dart';
 import '../application/expenses_providers.dart';
 import '../data/expense_dto.dart';
 import '../data/expenses_repository.dart';
@@ -220,6 +221,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       }
       ref.invalidate(expensesProvider(widget.groupId));
       ref.invalidate(activityProvider);
+      ref.invalidate(overviewProvider);
       if (!mounted) return;
       navigator.pop();
       messenger.showSnackBar(

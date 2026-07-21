@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/money.dart';
 import '../../../core/network/api_error.dart';
+import '../../activity/application/activity_providers.dart';
 import '../../groups/application/groups_providers.dart';
+import '../../overview/application/overview_providers.dart';
 import '../application/expenses_providers.dart';
 import '../data/expense_dto.dart';
 import '../data/expenses_repository.dart';
@@ -129,6 +131,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
           .read(expensesRepositoryProvider)
           .deleteExpense(groupId: groupId, expenseId: expense.id);
       ref.invalidate(expensesProvider(groupId));
+      ref.invalidate(activityProvider);
+      ref.invalidate(overviewProvider);
       navigator.pop(); // back to the group
       messenger.showSnackBar(const SnackBar(content: Text('Expense deleted')));
     } catch (e) {

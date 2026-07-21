@@ -2,12 +2,15 @@ import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Base URL of the FastAPI backend.
-///
-/// On web (Chrome) the backend is reachable at localhost:8000. When we add
-/// Android, the emulator reaches the host machine via 10.0.2.2 instead — we'll
-/// branch on the platform then.
-const String _baseUrl = 'http://localhost:8000/api/v1';
+/// Base URL of the FastAPI backend, set at BUILD time so one codebase targets
+/// dev and prod:
+///   flutter run -d chrome                         → localhost (default below)
+///   ... --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1   (Android emulator)
+///   flutter build apk --dart-define=API_BASE_URL=https://YOUR-API/api/v1  (prod)
+const String _baseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://localhost:8000/api/v1',
+);
 
 /// A configured Dio instance, provided via Riverpod so the whole app shares one
 /// client (and tests can override it).

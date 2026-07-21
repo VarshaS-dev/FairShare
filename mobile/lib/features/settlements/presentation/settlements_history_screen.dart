@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/money.dart';
 import '../../../core/network/api_error.dart';
+import '../../activity/application/activity_providers.dart';
 import '../../groups/application/groups_providers.dart';
+import '../../overview/application/overview_providers.dart';
 import '../application/settlements_providers.dart';
 import '../data/settlement_dto.dart';
 import '../data/settlements_repository.dart';
@@ -86,6 +88,8 @@ class _SettlementRow extends ConsumerWidget {
           .read(settlementsRepositoryProvider)
           .deleteSettlement(groupId: groupId, settlementId: s.id);
       ref.invalidate(settlementsProvider(groupId));
+      ref.invalidate(activityProvider);
+      ref.invalidate(overviewProvider);
       messenger.showSnackBar(const SnackBar(content: Text('Payment removed')));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(describeApiError(e))));
